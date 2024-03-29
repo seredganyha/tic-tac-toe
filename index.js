@@ -298,3 +298,130 @@ function evaluate(board) {
   // Game is not over
   return null;
 }
+
+class AudioManager {
+  audios = {
+    move: new Audio('./audio/move.mp3'),
+    lose: new Audio('./audio/lose.mp3'),
+    win: new Audio('./audio/win.mp3'),
+    tie: new Audio('./audio/tie.mp3')
+  }
+
+  constructor() {}
+
+  play(audioName) {
+    this.audios[audioName].play();
+  }
+}
+
+class Game {
+    isStart = false;
+    board = [];
+    boardElementHtml;
+    currentMove = PlayerType.human;
+    audioService;
+
+    constructor(AudioService, boardElementHtml) {
+      this.audioService = AudioService;
+      this.boardElementHtml = boardElementHtml
+    }
+
+    start() {
+        this.isStart = true;
+        changeVisibility(gameElement)
+        this.board = getInitBoard();
+    }
+    playerMove(cellCoards) {
+        if(this.isStart) {
+            this.move(cellCoards.row, cellCoards.column, huPlayer)
+            this.nextMove();
+        }
+    }
+    getCurrentMove() {
+      return this.currentMove;
+    }
+    isCellAvailable(cell) {
+      return this.board[cell.row][cell?.column] === null;
+    }
+    async computerMove() {
+        if(this.isStart) {
+          debugger
+            const move = findBestMove(this.board)
+            await delay(this.move, boardConfig.delay.move, [move.row, move.column, aiPlayer], this)
+            this.nextMove()
+        }
+    }
+    move(row, column, player) {
+      this.board[row][column] = player;
+      this.audioService.play('move');
+    }
+    nextMove() {
+      this.render();
+      if(this.checkGameIsOver()) {
+        this.finish();
+      } else {
+        if(this.currentMove === PlayerType.human) {
+          this.passMove()
+          this.computerMove();
+        }
+        else {
+          this.passMove();
+        }
+
+      }
+    }
+    checkGameIsOver() {
+      const isGameOn = evaluate(this.board) === null;
+      if(!isGameOn) {
+        return true;
+      }
+      return false
+    }
+    render() {
+          this.board.forEach((elem, i) => {
+            elem.forEach((cell, j ) => {
+                let coards = calculateCoordinates(i, j, boardConfig.cell.width, boardConfig.cell.height);
+                if(cell === huPlayer) {
+                  drawCross(this.boardElementHtml, coards.x, coards.y, boardConfig.cross.size)
+                }
+                else if(cell === aiPlayer) {
+                  drawCircle(this.boardElementHtml, coards.x, coards.y,boardConfig.cross.size)
+                }
+            })
+        })
+    }
+    async finish() {
+      this.isStart = false;
+      await delay(changeVisibility, boardConfig.delay.finish, [gameElement])
+      this.viewResult();
+      await delay(restart, boardConfig.delay.restart);
+    }
+    viewResult () {
+      const score = evaluate(this.board);
+      changeVisibility(resultElement);
+      switch (score) {
+        case gameResultsPlayers.win:
+          changeVisibility(winElement)
+          this.audioService.play('win');
+          break;
+        case gameResultsPlayers.lose:
+          changeVisibility(loseElement);
+          this.audioService.play('lose');
+          break;
+        case gameResultsPlayers.tie:
+          changeVisibility(tieElement);
+          this.audioService.play('tie');
+          break;
+      }
+    }
+    passMove() {
+      if(this.currentMove === PlayerType.human) {
+        this.currentMove = PlayerType.computer;
+        changeTurn()
+      }
+      else {
+        this.currentMove = PlayerType.human;
+        changeTurn()
+      }
+    }
+}
