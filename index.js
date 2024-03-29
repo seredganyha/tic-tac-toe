@@ -425,3 +425,94 @@ class Game {
       }
     }
 }
+
+function getCellByCoards(x, y) {
+    let row = Math.floor(y / boardConfig.cell.height);
+    let column = Math.floor(x / boardConfig.cell.width);
+
+    return { row: row, column: column };
+}
+
+function boardClick(gameContext) {
+  let { x, y } = getCoordsFromGameContext(gameContext);
+
+  const isAllChecks = allChecks(
+    [
+      isClickInsideGameArea,
+      isPlayerMove,
+      isCellAvailable
+    ]
+  );
+
+  if(isAllChecks(gameContext)) {
+    gameContext?.game?.playerMove(getCellByCoards(x, y))
+  }
+}
+
+function allChecks(funcs) {
+  return function(value) {
+    for (const func of funcs) {
+      if (typeof func !== 'function') {
+        throw new Error('Argument is not a function');
+      }
+      if (!func(value)) {
+        return false;
+      }
+    }
+    return true;
+  }
+}
+
+const getCoordsFromGameContext = (gameContext) => {
+  let elemLeft = gameContext?.boardView?.offsetLeft + gameContext?.boardView?.clientLeft;
+  let elemTop = gameContext?.boardView?.offsetTop + gameContext?.boardView?.clientTop;
+  let x = gameContext?.event?.pageX - elemLeft;
+  let y = gameContext?.event?.pageY - elemTop;
+  return { x, y };
+}
+
+const isClickInsideGameArea = (gameContext) => {
+  let { x, y } = getCoordsFromGameContext(gameContext);
+
+  if((x >= 0 && x <= boardConfig.cell.width*3) && (y >=0 && y <=boardConfig.cell.height*3)) {
+    return true;
+  }
+  return false;
+}
+
+const isPlayerMove = (gameContext) => {
+  return gameContext?.game?.getCurrentMove() === PlayerType.human;
+}
+
+const isCellAvailable = (gameContext) => {
+  let {x, y} = getCoordsFromGameContext(gameContext);
+  let cell = getCellByCoards(x, y)
+  return gameContext?.game?.isCellAvailable(cell);
+}
+
+function start() {
+  initCanvas()
+
+  const boardView = document.querySelector('#board');
+  const boardCtx = boardView.getContext('2d');
+  const audioManager = new AudioManager();
+  const game = new Game(audioManager, boardCtx);
+
+  const gameContext = {
+    boardView,
+    boardCtx,
+    audioManager,
+    game
+  };
+
+  changeVisibility(startElement);
+  gameContext.game.start();
+
+  gameContext.boardView.addEventListener('click', (event) => {
+    boardClick({...gameContext, event});
+  });
+}
+
+function restart() {
+  location.reload();
+}
